@@ -74,15 +74,17 @@ void loop() {
   int yAxis = analogRead(A1); // Read Joysticks Y-axis (forward and backward)
 
   // Y-axis used for forward and backward control
+  int baseSpeed = 0;
+  bool goingForward = false;
+  bool goingBackward = false;
+
   if (yAxis < 470) {
     // Case where joystick is pushed backwards --> Robot is moving backwards
+    goingBackward = true;
 
     // Set back motors backward
-    // Note: Setting pin 1 to HIGH and pin 2 to LOW will spin the motors in one direction.
-    //       Setting pin 1 to LOW and pin 2 to HIGH will spin the motors in the opposite direction.
-    // Note that the orientation of the motor changes the direction of rotation so you may have to swap these around in code or on hardware. 
-    digitalWrite(back_left_1, LOW);  // Set back left pin 1 to LOW
-    digitalWrite(back_left_2, HIGH);  // Set back left pin 2 to HIGH
+    digitalWrite(back_left_1, LOW);
+    digitalWrite(back_left_2, HIGH);
     digitalWrite(back_right_1, LOW);
     digitalWrite(back_right_2, HIGH);
 
@@ -92,20 +94,18 @@ void loop() {
     digitalWrite(front_left_1, HIGH);
     digitalWrite(front_left_2, LOW);
 
-    // Convert the declining Y-axis readings for going backward from 470 to 0 into 0 to 255 value for the PWM signal for increasing the motor speed
-    speed_back_left = map(yAxis, 470, 0, 0, 255);
-    speed_back_right = map(yAxis, 470, 0, 0, 255);
-    speed_front_right = map(yAxis, 470, 0, 0, 255);
-    speed_front_left = map(yAxis, 470, 0, 0, 255);
+    // Convert Y-axis readings for going backward (470 to 0 -> 0 to 255)
+    baseSpeed = map(yAxis, 470, 0, 0, 255);
+    speed_back_left = baseSpeed;
+    speed_back_right = baseSpeed;
+    speed_front_right = baseSpeed;
+    speed_front_left = baseSpeed;
   }
   else if (yAxis > 550) {
-    // Case where joystick is pushed fowards --> Robot moves forwards
+    // Case where joystick is pushed forwards --> Robot moves forwards
+    goingForward = true;
 
     // Set back motors forward
-
-    // Note: Setting pin 1 to HIGH and pin 2 to LOW will spin the motors in one direction.
-    //       Setting pin 1 to LOW and pin 2 to HIGH will spin the motors in the opposite direction.
-    // Note that the orientation of the motor changes the direction of rotation
     digitalWrite(back_left_1, HIGH);
     digitalWrite(back_left_2, LOW);
     digitalWrite(back_right_1, HIGH);
@@ -117,70 +117,38 @@ void loop() {
     digitalWrite(front_left_1, LOW);
     digitalWrite(front_left_2, HIGH);
 
-    // Convert the increasing Y-axis readings for going forward from 550 to 1023 into 0 to 255 value for the PWM signal for increasing the motor speed
-    speed_back_left = map(yAxis, 550, 1023, 0, 255);
-    speed_back_right = map(yAxis, 550, 1023, 0, 255);
-    speed_front_right = map(yAxis, 550, 1023, 0, 255);
-    speed_front_left = map(yAxis, 550, 1023, 0, 255);
+    // Convert Y-axis readings for going forward (550 to 1023 -> 0 to 255)
+    baseSpeed = map(yAxis, 550, 1023, 0, 255);
+    speed_back_left = baseSpeed;
+    speed_back_right = baseSpeed;
+    speed_front_right = baseSpeed;
+    speed_front_left = baseSpeed;
   }
   else {
-    // Case where joystick is in the middle --> Motors not moving
+    // Joystick in middle --> no base movement
     speed_back_left = 0;
     speed_back_right = 0;
     speed_front_right = 0;
     speed_front_left = 0;
   }
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-  // X-axis used for left and right control
-  if (xAxis > 600) { 
-    int xMapped = map(xAxis, 600, 1023, 0, 255);
-    
-    // Right motors backward
-    digitalWrite(back_right_1, LOW);
-    digitalWrite(back_right_2, HIGH);
-    digitalWrite(front_right_1, HIGH);
-    digitalWrite(front_right_2, LOW);
-    speed_back_right += xMapped;
-    speed_front_right += xMapped;
-  
-    // Left motors forward
-    digitalWrite(back_left_1, HIGH);
-    digitalWrite(back_left_2, LOW);
-    digitalWrite(front_left_1, LOW);
-    digitalWrite(front_left_2, HIGH);
-    speed_back_left += xMapped;
-    speed_front_left += xMapped;
-  
-    if (speed_back_left > 255) speed_back_left = 255;
-    if (speed_back_right > 255) speed_back_right = 255;
-    if (speed_front_right > 255) speed_front_right = 255;
-    if (speed_front_left > 255) speed_front_left = 255;
-  }
-  
 
-  else if (xAxis < 470) {
+  // X-axis used for left and right control - ONLY adjusts speed, never overwrites direction
+  // Direction pins are already set by Y-axis above
+  if ((goingForward || goingBackward) && xAxis > 600) {
+    // Turn right: slow down right side, speed up left side
+    int xMapped = map(xAxis, 600, 1023, 0, 255);
+    speed_back_right = (speed_back_right > xMapped) ? speed_back_right - xMapped : 0;
+    speed_front_right = (speed_front_right > xMapped) ? speed_front_right - xMapped : 0;
+    speed_back_left = (speed_back_left + xMapped <= 255) ? speed_back_left + xMapped : 255;
+    speed_front_left = (speed_front_left + xMapped <= 255) ? speed_front_left + xMapped : 255;
+  }
+  else if ((goingForward || goingBackward) && xAxis < 470) {
+    // Turn left: slow down left side, speed up right side
     int xMapped = map(xAxis, 470, 0, 0, 255);
-  
-    // Left motors backward
-    digitalWrite(back_left_1, LOW);
-    digitalWrite(back_left_2, HIGH);
-    digitalWrite(front_left_1, HIGH);
-    digitalWrite(front_left_2, LOW);
-    speed_back_left += xMapped;
-    speed_front_left += xMapped;
-  
-    // Right motors forward
-    digitalWrite(back_right_1, HIGH);
-    digitalWrite(back_right_2, LOW);
-    digitalWrite(front_right_1, LOW);
-    digitalWrite(front_right_2, HIGH);
-    speed_back_right += xMapped;
-    speed_front_right += xMapped;
-  
-    if (speed_back_left > 255) speed_back_left = 255;
-    if (speed_back_right > 255) speed_back_right = 255;
-    if (speed_front_right > 255) speed_front_right = 255;
-    if (speed_front_left > 255) speed_front_left = 255;
+    speed_back_left = (speed_back_left > xMapped) ? speed_back_left - xMapped : 0;
+    speed_front_left = (speed_front_left > xMapped) ? speed_front_left - xMapped : 0;
+    speed_back_right = (speed_back_right + xMapped <= 255) ? speed_back_right + xMapped : 255;
+    speed_front_right = (speed_front_right + xMapped <= 255) ? speed_front_right + xMapped : 255;
   }
 
   // Prevent buzzing at low speeds (Adjust according to your motors. My motors couldn't start moving if PWM value was below value of 70)

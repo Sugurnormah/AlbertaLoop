@@ -28,7 +28,7 @@
 #define back_left_enable 7
 #define back_left_1 5
 #define back_left_2 6
-#define back_right_enable 2
+#define back_right_enable 2   // PWM-capable (pin 2 doesn't support PWM on Arduino Uno)
 #define back_right_1 3
 #define back_right_2 4
 
@@ -83,8 +83,9 @@ void loop() {
     goingBackward = true;
 
     // Set back motors backward
-    digitalWrite(back_left_1, LOW);
-    digitalWrite(back_left_2, HIGH);
+    // back_left: 1L/2H doesn't move - use 1H/2L (inverted wiring; if wheel goes wrong way, swap physical wires 5&6)
+    digitalWrite(back_left_1, HIGH);
+    digitalWrite(back_left_2, LOW);
     digitalWrite(back_right_1, LOW);
     digitalWrite(back_right_2, HIGH);
 
@@ -166,11 +167,13 @@ void loop() {
   }
   ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-  // Sends PWM signal to motors
-  analogWrite(back_left_enable, speed_back_left); // Send analog signal to back left motor
-  analogWrite(back_right_enable, speed_back_right); // Send analog signal to back right motor
-  analogWrite(front_right_enable, speed_front_right); // Send analog signal to front right
-  analogWrite(front_left_enable, speed_front_left); // Send analog signal to front left
+  // Front motors: pins 8,13 support PWM on some boards; use analogWrite
+  analogWrite(front_right_enable, speed_front_right);
+  analogWrite(front_left_enable, speed_front_left);
+
+  // Back motors: pins 2 and 7 don't support PWM on Arduino Uno - use digitalWrite (full speed when on)
+  digitalWrite(back_left_enable, speed_back_left >= 72 ? HIGH : LOW);
+  digitalWrite(back_right_enable, speed_back_right >= 72 ? HIGH : LOW);
 
   Serial.print("X: "); Serial.print(xAxis);
   Serial.print(" Y: "); Serial.println(yAxis);
